@@ -1,0 +1,272 @@
+<?xml-model href="../../schemas/every_model.sch" type="application/xml" schematypens="http://purl.oclc.org/dsdl/schematron"?>
+<service xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="control_plane_wireline" type="TRANSACTION" xsi:noNamespaceSchemaLocation="../../schemas/xsd/Service.xsd">
+    <aging retention-policy="raw.hst"/>
+    <input-field name="segmentation_key" type="INT"/>
+    <input-field name="ipAddress" type="STRING" description="Device IP Address"/>
+    <input-field name="interfaceNumber" type="INT" description="Device Interface Number"/>
+    <input-field name="applicationID" type="INT" description="NetScout application identifier"/>
+    <input-field name="messageID" type="INT" description="NetScout Message ID"/>
+    <input-field name="clientSite" type="INT" description="LocationKey: Client Site ID"/>
+    <input-field name="serverSite" type="INT" description="LocationKey: Server Site ID"/>
+    <input-field name="errorResultCauseCode" type="LONG" description="Error, Result, Cause Code, depending on Procotol"/>
+    <input-field name="transactionStartTimeUsec" type="TIMESTAMP" description="UTC Transaction Start Time in Usec"/>
+    <input-field name="responseTimeUsec" type="LONG" description="Response Time User"/>
+    <input-field name="fileStartTime" type="TIMESTAMP" description="File Start Time"/>
+    <input-field name="clientMacAddress" type="STRING" description="Client MAC Address"/>
+    <input-field name="ap_ip_address" type="STRING" description="Access Point IP Address"/>
+    <input-field name="directionIndicator" type="BYTE" description="Direction Indicator"/>
+    <input-field name="transactionId" type="LONG" description="Transaction ID"/>
+    <input-field name="serverOriginHost" type="INT" description="LocationKey: Server Origin Host"/>
+    <input-field name="clientOriginRealm" type="INT" description="LocationKey: Client Origin Realm"/>
+    <input-field name="serverOriginRealm" type="INT" description="LocationKey: Server Origin Realm"/>
+    <input-field name="ip1OrID" type="STRING" description="Source Host IP address"/>
+    <input-field name="ip2OrID" type="STRING" description="Destination Host IP address"/>
+    <input-field name="clientOriginHost" type="INT" description="LocationKey: Client Origin Host"/>
+    <input-field name="subscriberMACLineId" type="STRING" description="Cable network: MAC address and Line ID"/>
+    <input-field name="outerTunnelClientIP" type="STRING" description="Outer Tunnel Client IP"/>
+    <input-field name="outerTunnelServerIP" type="STRING" description="Outer Tunnel Server IP"/>
+    <input-field name="userAgent" type="STRING" description="User Agent"/>
+    <input-field name="ap_mac_address" type="STRING" description="ap mac address"/>
+    <input-field name="vlan" type="INT" description="LocationKey: VLAN ID"/>
+    <input-field name="flags" type="INT" description="Flags for Transaction"/>
+    <input-field name="callingParty" type="STRING" description="Calling Party"/>
+    <input-field name="calledParty" type="STRING" description="Called Party"/>
+    <input-field name="directionID" type="BYTE" description="Direction"/>
+    <input-field name="subscriber_msisdn" type="LONG" description="Subscriber calling number or called number"/>
+    <input-field name="subscriberLineID" type="STRING" description="Cable network: Line ID"/>
+    <!-- Additional field required due to the TLV parsing to describe the required record structure -->
+    <input-field name="informationType" type="BYTE" description="Information Type"/>
+    
+    <timestamp-column encoding="RLE">
+        <input-field ref="fileStartTime"/>
+    </timestamp-column>
+    <dimension-column column-name="segmentation_key" column-type="INT" description="Segmentation Key" encoding="DELTAVAL">
+        <input-field ref="segmentation_key"/>
+    </dimension-column>
+    <dimension-column column-name="device_ip_address" column-size="45" column-type="STRING" description="Device IP Address" encoding="RLE" export-mapping="CP1">
+        <input-field ref="ipAddress"/>
+    </dimension-column>
+    <dimension-column column-name="device_interface_number_id" column-type="INT" description="Interface number" encoding="RLE" export-mapping="CPX1">
+        <input-field ref="interfaceNumber"/>
+    </dimension-column>
+    <dimension-mapping dimension="devices">
+        <mapping column="device_ip_address" primary-key="device_ip_address"/>
+        <mapping column="device_interface_number_id" primary-key="device_interface_number_id"/>
+    </dimension-mapping>
+    <dimension-column column-name="application_id" column-type="INT" description="Application Id" encoding="RLE" export-mapping="CPX8">
+        <input-field ref="applicationID"/>
+    </dimension-column>
+    <dimension-mapping dimension="applications">
+        <mapping column="application_id" primary-key="application_id"/>
+    </dimension-mapping>
+    <dimension-column column-name="vlan_id" column-type="INT" description="Virtual Local Area Network" encoding="RLE" export-mapping="CX23">
+    <input-field ref="vlan"/>
+  </dimension-column>
+  <dimension-mapping dimension="vlan">
+    <mapping column="device_ip_address" primary-key="device_ip_address"/>
+    <mapping column="device_interface_number_id" primary-key="device_interface_number_id"/>
+    <mapping column="vlan_id" primary-key="vlan_id"/>
+  </dimension-mapping>
+    <dimension-column column-name="message_id" column-type="INT" description="Message Id" encoding="RLE" export-mapping="CPX9">
+        <input-field ref="messageID"/>
+    </dimension-column>
+    <dimension-column column-name="controlplane_transaction_status_id" column-type="INT" description="Flag Id" encoding="RLE" export-mapping="CPX14">
+        <input-field ref="flags"/>
+    </dimension-column>
+    <dimension-mapping dimension="cptransaction">
+        <mapping column="controlplane_transaction_status_id" primary-key="controlplane_transaction_status_id"/>
+    </dimension-mapping>
+
+    <dimension-mapping dimension="messages">
+        <mapping column="application_id" primary-key="application_id"/>
+        <mapping column="message_id" primary-key="message_id"/>
+    </dimension-mapping>
+    <dimension-column column-name="response_code" column-type="LONG" description="Response Cause Code" encoding="RLE" export-mapping="CP11">
+        <input-field ref="errorResultCauseCode"/>
+    </dimension-column>
+    <dimension-mapping dimension="response">
+        <mapping column="application_id" primary-key="application_id"/>
+        <mapping column="response_code" primary-key="response_code"/>
+        <mapping column="message_id" primary-key="message_id"/>
+    </dimension-mapping>
+    <dimension-column column-name="source_host_ip_address" column-size="45" column-type="STRING" description="Outer Tunnel Client IP Address" encoding="ZSTD_FAST_COMP" export-mapping="CP7" storage-level="LEVEL2">
+        <input-field ref="ip1OrID"/>
+    </dimension-column>
+    <dimension-mapping dimension="hosts" export-mapping-prefix="S" id="source">
+        <mapping column="source_host_ip_address" primary-key="host_ip_address"/>
+        <dimension-attributes>
+            <dimension-attribute encoding="ZSTD_FAST_COMP" name="host_name" storage-level="LEVEL2"/>
+        </dimension-attributes>
+    </dimension-mapping>
+    <dimension-column column-name="destination_host_ip_address" column-size="45" column-type="STRING" description="Outer Tunnel Server IP Address" encoding="ZSTD_FAST_COMP" export-mapping="CP8" storage-level="LEVEL2">
+        <input-field ref="ip2OrID"/>
+    </dimension-column>
+    <dimension-mapping dimension="hosts" export-mapping-prefix="D" id="destination">
+        <mapping column="destination_host_ip_address" primary-key="host_ip_address"/>
+        <dimension-attributes>
+            <dimension-attribute encoding="ZSTD_FAST_COMP" name="host_name" storage-level="LEVEL2"/>
+        </dimension-attributes>
+    </dimension-mapping>
+    <dimension-column column-name="client_server_entry_type" column-type="BYTE" description="Client Server Entry Type" encoding="RLE" export-mapping="CPX37" persisted="false">
+        <input-field ref="directionIndicator"/>
+    </dimension-column>
+    <dimension-mapping dimension="client_server_entry_type">
+        <mapping column="client_server_entry_type" primary-key="client_server_entry_type_id"/>
+    </dimension-mapping>
+    <dimension-column column-name="outer_client_host_ip_address" column-size="45" column-type="STRING" description="Outer Tunnel Client IP Address" encoding="ZSTD_FAST_COMP" export-mapping="CPX19" persisted="true" storage-level="LEVEL2">
+        <input-field ref="outerTunnelClientIP"/>
+    </dimension-column>
+    <dimension-mapping dimension="hosts" export-mapping-prefix="OC" id="outer_client">
+        <mapping column="outer_client_host_ip_address" primary-key="host_ip_address"/>
+        <dimension-attributes>
+            <dimension-attribute encoding="AUTO" name="host_name" storage-level="LEVEL2"/>
+        </dimension-attributes>
+    </dimension-mapping>
+    <dimension-column column-name="outer_server_host_ip_address" column-size="45" column-type="STRING" description="Outer Tunnel Server IP Address" encoding="ZSTD_FAST_COMP" export-mapping="CPX20" persisted="true" storage-level="LEVEL2">
+        <input-field ref="outerTunnelServerIP"/>
+    </dimension-column>
+    <dimension-mapping dimension="hosts" export-mapping-prefix="OS" id="outer_server">
+        <mapping column="outer_server_host_ip_address" primary-key="host_ip_address"/>
+        <dimension-attributes>
+            <dimension-attribute encoding="ZSTD_FAST_COMP" name="host_name" storage-level="LEVEL2"/>
+        </dimension-attributes>
+    </dimension-mapping>
+    <dimension-column column-name="client_site_id" column-type="INT" description="Client site" encoding="RLE" export-mapping="CPX21" storage-level="LEVEL3">
+        <null-mappings>
+            <map-to-null value="65535"/>
+        </null-mappings>
+        <input-field ref="clientSite"/>
+    </dimension-column>
+    <dimension-mapping dimension="sites" export-mapping-prefix="C" id="client">
+        <mapping column="client_site_id" primary-key="site_id"/>
+        <dimension-attributes>
+            <dimension-attribute encoding="ZSTD_FAST_COMP" name="site_name" storage-level="LEVEL3"/>
+        </dimension-attributes>
+    </dimension-mapping>
+    <dimension-column column-name="server_site_id" column-type="INT" description="Server site" encoding="RLE" export-mapping="CPX22" storage-level="LEVEL3">
+        <null-mappings>
+            <map-to-null value="65535"/>
+        </null-mappings>
+        <input-field ref="serverSite"/>
+    </dimension-column>
+    <dimension-mapping dimension="sites" export-mapping-prefix="S" id="server">
+        <mapping column="server_site_id" primary-key="site_id"/>
+        <dimension-attributes>
+            <dimension-attribute encoding="ZSTD_FAST_COMP" name="site_name" storage-level="LEVEL3"/>
+        </dimension-attributes>
+    </dimension-mapping>
+    <dimension-column column-name="cpw_transaction_start_time" column-type="TIMESTAMP" description="Transaction Start Time (Usec)" encoding="DELTARANGE_COMP" export-mapping="CP12">
+        <input-field ref="transactionStartTimeUsec"/>
+    </dimension-column>
+    <dimension-column column-name="ap_ip_address" column-type="STRING" column-size="45" description="Access Point IP Address" encoding="ZSTD_FAST_COMP" export-mapping="CPX160">
+        <input-field ref="ap_ip_address"/>
+    </dimension-column>
+    <dimension-column column-name="ap_mac_address" column-type="STRING" encoding="ZSTD_FAST_COMP" export-mapping="HT2">
+        <input-field ref="ap_mac_address"/>
+    </dimension-column>
+    <dimension-mapping dimension="wireless_access_point">
+        <mapping column="ap_mac_address" primary-key="ap_mac_address"/>
+    </dimension-mapping>
+    <dimension-column column-name="clientequipment_mac_address" column-type="STRING" encoding="ZSTD_FAST_COMP" export-mapping="HT3">
+        <input-field ref="clientMacAddress"/>
+    </dimension-column>
+    <dimension-mapping dimension="client_equipment">
+        <mapping column="clientequipment_mac_address" primary-key="clientequipment_mac_address"/>
+    </dimension-mapping>
+    <dimension-column column-name="calling_address" column-size="45" column-type="STRING" description="Calling Party" encoding="RLE" export-mapping="CPX23" obfuscator="MSISDN">
+        <input-field ref="callingParty"/>
+    </dimension-column>
+    <dimension-column column-name="called_address" column-size="45" column-type="STRING" description="Called Party" encoding="RLE" export-mapping="CPX24" obfuscator="MSISDN">
+        <input-field ref="calledParty"/>
+    </dimension-column>
+    <dimension-column column-name="direction_id" column-type="BYTE" description="Direction" encoding="RLE" export-mapping="CPX25">
+        <input-field ref="directionID"/>
+    </dimension-column>
+    <dimension-mapping dimension="direction">
+        <mapping column="direction_id" primary-key="direction_id"/>
+    </dimension-mapping>
+    <dimension-column column-name="subscriber_phone_number" column-type="LONG" description="Subscriber Phone Number" encoding="DELTARANGE_COMP" export-mapping="CPX27" obfuscator="LONG_MSISDN">
+        <input-field ref="subscriber_msisdn"/>
+    </dimension-column>
+    <dimension-mapping dimension="subscribers_number">
+        <mapping column="subscriber_phone_number" primary-key="subscriber_phone_number"/>
+    </dimension-mapping>
+    <dimension-column column-name="subscriber_line_id" column-size="3" column-type="STRING" description="Subscriber LineID" encoding="ZSTD_FAST_COMP" export-mapping="CPX28">
+        <input-field ref="subscriberLineID"/>
+    </dimension-column>
+    <!-- *********************************************************************** -->
+    <!-- Control Plane Measures -->
+    <!-- ***********************************************************************-->
+    <measure-column aggregation-type="SUM" column-name="cpw_response_time_usec" column-type="LONG" description="Response Time (Usec)" encoding="DELTARANGE_COMP" export-mapping="CPW23">
+        <input-field ref="responseTimeUsec"/>
+    </measure-column>
+    <!-- Additional measure not in the probe feed -->
+    <measure-column aggregation-type="SUM" aggregation-verification-column="true" column-name="cpw_event_count" column-type="INT" description="Event count" encoding="RLE" export-mapping="CPWX47" count-column="true">
+        <constant value="1"/>
+    </measure-column>
+    <column-cardinalities>
+        <column column-name="cal_timestamp_year" reserved="true"/>
+        <column column-name="cal_timestamp_quarter" reserved="true"/>
+        <column column-name="cal_timestamp_month" reserved="true"/>
+        <column column-name="cal_timestamp_week" reserved="true"/>
+        <column column-name="cal_timestamp_day" reserved="true"/>
+        <column column-name="cal_timestamp_hour" reserved="true"/>
+        <column column-name="cal_timestamp_time" reserved="true"/>
+        <column column-name="application_group"/>
+        <column column-name="application_id"/>
+        <column column-name="application_name"/>
+        <column column-name="application_protocol_type_code"/>
+        <column column-name="message_protocol_type_code"/>
+        <column column-name="message_id"/>
+        <column column-name="message_name"/>
+        <!-- 611 -->
+        <column column-name="device_ip_address"/>
+        <column column-name="device_interface_number_id"/>
+        <column column-name="device_interface_type"/>
+        <column column-name="device_name"/>
+        <!-- Low Cardinality Subscriber enrichments --> 
+        <column column-name="subscriber_gender"/>
+        <column column-name="subscriber_segment_name"/>
+        <column column-name="subscriber_plan_name"/>
+        <column column-name="subscriber_age"/>      
+        <column column-name="subscriber_company_name"/>     
+        <column column-name="subscriber_opt_out"/>      
+        <column column-name="response_code"/>
+        <column column-name="response_description"/>
+        <column column-name="client_site_id"/>
+        <column column-name="client_site_name"/>
+        <column column-name="source_host_name"/>
+        <column column-name="source_host_ip_address"/>
+        <column column-name="outer_client_host_name"/>
+        <column column-name="outer_server_host_name"/>
+        <column column-name="outer_client_host_ip_address"/>
+        <column column-name="outer_server_host_ip_address"/>
+        <column column-name="server_site_id"/>
+        <column column-name="server_site_name"/>
+        <column column-name="destination_host_name"/>
+        <column column-name="destination_host_ip_address"/>     
+        <column column-name="ap_cable_modem_mac_address"/>
+        <column column-name="ap_cable_modem_model_name"/>
+        <column column-name="ap_software_name"/>
+        <column column-name="ap_cable_modem_software_name"/>
+        <column column-name="ap_model_name"/>
+        <column column-name="clientequipment_mac_address"/>     
+        <column column-name="subscriber_line_id"/>
+        <column column-name="subscriber_branch_id"/>
+        <column column-name="subscriber_branch_name"/>
+        <column column-name="subscriber_branch_latitude"/>
+        <column column-name="subscriber_branch_longitude"/>
+        <column column-name="subscriber_site_name"/>
+        <column column-name="subscriber_department_name"/>      
+        <column column-name="calling_address"/>
+        <column column-name="called_address"/>      
+        <column column-name="subscriber_phone_number"/>
+        <column column-name="subscriber_generic_1_label"/>
+        <column column-name="subscriber_generic_2_label"/>
+        <column column-name="subscriber_generic_3_label"/>
+        <column column-name="subscriber_generic_1_code"/>
+        <column column-name="subscriber_generic_2_code"/>
+        <column column-name="subscriber_generic_3_code"/>
+        <column column-name="segmentation_key" segmentation-column="true"/>
+    </column-cardinalities>
+</service>

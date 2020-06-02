@@ -1,0 +1,9 @@
+Service Name,Service type,,,,,,,
+control_plane_wireline,TRANSACTION,,,,,,,
+Dimension Column Name,type,size,description,encoding,dimension mapping,dimension mapping key,input,
+application_id,INT,,NetScout application identifier,RLE,applications,application_id,applicationID,
+subscriber_phone_number,LONG,,Subscriber Phone Number,DELTARANGE_COMP,,,subscriber_msisdn,
+subscriber_line_id,STRING,3,Subscriber LineID,ZSTD_FAST_COMP,,,subscriberLineID,
+Measure Column Name,aggregation-type,aggregation-verification-column,column-type,description,encoding,count-column,input field,constant value
+cpw_response_time_usec,SUM,,LONG,Response Time (Usec),DELTARANGE_COMP,,responseTimeUsec,
+cpw_event_count,SUM,true,INT,Event count,RLE,true,,1
