@@ -1,0 +1,180 @@
+#-*- coding: utf-8
+"""
+requirements:
+    PyExecJS
+    requests
+"""
+import sys, os, re, requests, execjs
+from bs4 import BeautifulSoup
+from urllib.parse import quote
+
+debug_Flag = True
+OUT_DIR = r'output/'
+DM5_URL = r'http://www.dm5.com/'
+HTTP_OK = 200
+
+class Comic_Context:
+    def __init__( self ):
+        self.Title = ''
+        self.Max_Page = -1
+        self.Save_Path = ''
+        self.Next_Chapter = ''        
+        self.Chapter_Count = 0        
+        self.DM5_CID = ''
+        self.DM5_VIEWSIGN = ''
+        self.DM5_VIEWSIGN_DT = ''
+comic_Context = Comic_Context()   
+
+def debug_print( debug_info ):
+    if debug_Flag:
+        print( f'debug_info: {debug_info}' )
+
+def make_path( save_path ):
+    if not os.path.exists( save_path ):
+        os.makedirs( save_path )
+
+def get_next_chapter( soup ):
+    element = soup.find('div', {'class': 'view-paging'})
+    if element is None:        
+        return ''
+
+    element_NextChapter = element.find_all( 'a', {'class': 'block'} )
+
+    next_chapter = element_NextChapter[-1]['href'][1:]
+    pattern = r'^m\d+/$'
+    match_result = re.fullmatch( pattern, next_chapter )
+    if match_result:
+        return next_chapter
+    return ''
+
+def get_comic_context( soup ):    
+    js_Codes = soup.find_all('script', {'type': 'text/javascript'})
+    js_Vals = {}
+    for js_Code in js_Codes:
+        if js_Code.text.find( 'var COMIC_MID' ) == -1:
+            continue
+        pattern = r'var\s+(\w+)\s*=\s*(["\']?)(.*?)\2\s*;'
+        matches = re.findall( pattern, js_Code.text )
+        js_Vals = { var_name: value.strip() for var_name, _, value in matches }
+        break
+    
+    if not 'DM5_CTITLE' in js_Vals:
+        return 
+    global comic_Context
+    comic_Context.Title = js_Vals[ 'DM5_CTITLE' ]
+    comic_Context.Max_Page = js_Vals[ 'DM5_IMAGE_COUNT' ]
+    comic_Context.DM5_CID = js_Vals[ 'DM5_CID' ]
+    comic_Context.DM5_VIEWSIGN = js_Vals[ 'DM5_VIEWSIGN' ]
+    comic_Context.DM5_VIEWSIGN_DT = js_Vals[ 'DM5_VIEWSIGN_DT' ]
+
+def generate_HTTP_JSKeyHeader( url ):
+    dm5_header = {}
+    dm5_header['User-Agent'] = r'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:145.0) Gecko/20100101 Firefox/145.0'
+    dm5_header['Accept'] = r'*/*'
+    dm5_header['Accept-Language'] = r'en-US,en;q=0.5'
+    dm5_header['Referer'] = r'https://www.dm5.com/m1019770/'
+    dm5_header['X-Requested-With'] = r'XMLHttpRequest'
+    dm5_header['Connection'] = r'keep-alive'
+    dm5_header['Sec-Fetch-Dest'] = r'empty'
+    dm5_header['Sec-Fetch-Mode'] = r'cors'
+    dm5_header['Sec-Fetch-Site'] = r'same-origin'
+    dm5_header['Priority'] = r'u=0'
+    
+    return dm5_header
+
+def generate_HTTP_PicHeader( url ):
+    dm5_header = {}
+    dm5_header['User-Agent'] = r'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:145.0) Gecko/20100101 Firefox/145.0'
+    dm5_header['Accept'] = r'image/avif,image/webp,image/png,image/svg+xml,image/*;q=0.8,*/*;q=0.5'
+    dm5_header['Accept-Language'] = r'en-US,en;q=0.5'
+    dm5_header['Accept-Encoding'] = r'gzip, deflate, br, zstd'
+    dm5_header['Connection'] = r'keep-alive'
+    dm5_header['Referer'] = r'https://www.dm5.com/'
+    dm5_header['Sec-Fetch-Dest'] = r'image'
+    dm5_header['Sec-Fetch-Mode'] = r'no-cors'
+    dm5_header['Sec-Fetch-Site'] = r'cross-site'
+    dm5_header['Priority'] = r'u=5, i'
+    return dm5_header
+
+def download_image( cid, dm5_Sign, dm5_sign_dt, page_Index, chapter_Index ):
+    url = f'http://www.dm5.com/m{cid}/'
+
+    url_encoded_time_plus = quote(dm5_sign_dt).replace('%20', '+')
+    key_url = f'https://www.dm5.com/m{cid}/chapterfun.ashx?cid={cid}&page={page_Index}&key=&language=1&gtk=6&_cid={cid}'    
+    #key_url += f'&_mid=91734&_dt={url_encoded_time_plus}&_sign={dm5_Sign}'
+    key_url += f'&_mid=91734&_dt={dm5_sign_dt}&_sign={dm5_Sign}'
+    # Download JS code to generate the real picture URL
+    debug_print( key_url )
+    js_content = requests.get( key_url, headers = generate_HTTP_JSKeyHeader( url ) ).text
+    pic_url = execjs.eval(js_content)
+
+    img_savePath = f'{comic_Context.Save_Path}/{chapter_Index}/'
+    make_path( img_savePath )
+    if len( pic_url ) == 0:
+        print( 'No picture URL was returned!!!' )
+        return False
+
+    url = pic_url[0]
+    response = requests.get( url, headers = generate_HTTP_PicHeader( url ) )
+    if response.status_code == HTTP_OK:
+        with open( img_savePath + f'{page_Index}.jpg', 'wb' ) as imgFile:
+            imgFile.write( response.content )
+    return True    
+
+def donwload_chapter():
+    global comic_Context
+    while comic_Context.Next_Chapter != '':
+        #if comic_Context.Chapter_Count == 2:
+        #    break
+
+        dm5_url = DM5_URL + comic_Context.Next_Chapter
+        content = requests.get( dm5_url ).content
+        soup = BeautifulSoup( content, 'html.parser' )
+
+        get_comic_context( soup )
+
+        comic_Context.Chapter_Count += 1
+        if comic_Context.Chapter_Count == 1:
+            comic_Context.Save_Path = OUT_DIR + comic_Context.Next_Chapter
+            make_path( comic_Context.Save_Path )
+        print( f'Title: { comic_Context.Title }' ) 
+        print( f'------>  Fetching page list for chapter { comic_Context.Chapter_Count }' )    
+        print( f'------>  Total page { comic_Context.Max_Page }' )
+
+        #for page_Index in range( 1, int(comic_Context.Max_Page) + 1 ):
+        for page_Index in range( 1, 3 ):
+            print( f'------>  Fetching image {page_Index}...' )
+            if not download_image( comic_Context.DM5_CID, comic_Context.DM5_VIEWSIGN, \
+                                   comic_Context.DM5_VIEWSIGN_DT, page_Index, comic_Context.Chapter_Count ):
+                break
+        
+        print( '------------------------------------------------------------------------' )
+        comic_Context.Next_Chapter = get_next_chapter( soup )
+
+def download_comic( url ):
+    pat_url = r'http:\/\/www\.dm5\.com\/m\d+(-p\d+)?\/'
+    if not re.match( pat_url, url ):
+        print( f'Not a valid dm5 url: {url}' )
+        return
+     
+    print( f'Fetching comic from: {url}' )
+
+    pat_url = r'dm5\.com/(\w+)/'
+    
+    global comic_Context
+    comic_Context.Next_Chapter = re.findall( pat_url, url )[0]
+
+    donwload_chapter()
+    print( f'Finish fetching comic { comic_Context.Title }' )
+
+if __name__ == '__main__':
+    if len( sys.argv ) > 1:
+        url = sys.argv[1]
+    else:
+        print( 'Usage: crawler_dm5_com.py <url>' )
+        exit 
+
+    download_comic( url )
+
+
+
